@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from textblob import TextBlob
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -65,45 +63,35 @@ if uploaded_file is not None:
     # Step 3: Data Visualizations
     st.header("Data Visualizations")
 
-    # Sentiment Distribution Pie Chart
+    # Sentiment Distribution Bar Chart
     st.subheader("Sentiment Distribution")
-    sentiment_counts = df['Sentiment'].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%', startangle=90)
-    ax.axis("equal")
-    st.pyplot(fig)
+    if 'Sentiment' in df.columns:
+        sentiment_counts = df['Sentiment'].value_counts()
+        st.bar_chart(sentiment_counts)
 
-    # Platform Distribution Pie Chart
+    # Platform Distribution Bar Chart
     st.subheader("Platform Distribution")
-    platform_counts = df['Platform'].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(platform_counts, labels=platform_counts.index, autopct='%1.1f%%', startangle=90)
-    ax.axis("equal")
-    st.pyplot(fig)
+    if 'Platform' in df.columns:
+        platform_counts = df['Platform'].value_counts()
+        st.bar_chart(platform_counts)
 
-    # Hashtag Count Bar Plot
+    # Hashtag Count Bar Chart
     st.subheader("Top 10 Hashtags by Count")
-    top_hashtags = df['Hashtags'].value_counts().head(10).reset_index()
-    fig, ax = plt.subplots(figsize=(10, 8))
-    sns.barplot(data=top_hashtags, x="Hashtags", y="count", palette="gist_ncar", ax=ax)
-    st.pyplot(fig)
+    if 'Hashtags' in df.columns:
+        top_hashtags = df['Hashtags'].value_counts().head(10)
+        st.bar_chart(top_hashtags)
 
-    # Likes by Year Line Plot
+    # Total Likes by Year Line Chart
     st.subheader("Total Likes by Year")
-    likes_by_year = df.groupby("Year")["Likes"].sum().reset_index()
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.lineplot(data=likes_by_year, x="Year", y="Likes", marker="o", ax=ax)
-    st.pyplot(fig)
+    if 'Year' in df.columns and 'Likes' in df.columns:
+        likes_by_year = df.groupby("Year")["Likes"].sum().reset_index()
+        st.line_chart(likes_by_year.set_index("Year"))
 
-    # Scatter Plot: Likes vs Hour of Day
+    # Likes vs Hour of Day Bar Chart
     st.subheader("Likes vs Hour of Day")
-    if "Hour" in df.columns:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(data=df, x="Hour", y="Likes", hue="Platform", ax=ax)
-        st.pyplot(fig)
-
-    # More Visualizations (Add as needed)
-    # You can add additional plots here following the pattern above.
+    if 'Hour' in df.columns and 'Likes' in df.columns:
+        likes_by_hour = df.groupby("Hour")["Likes"].sum()
+        st.bar_chart(likes_by_hour)
 
 else:
     st.write("Please upload a CSV file to proceed.")
