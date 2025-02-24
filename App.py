@@ -1,109 +1,109 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.sentiment import SentimentIntensityAnalyzer
 from textblob import TextBlob
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import speech_recognition as sr
+import io
 
-# Function to analyze sentiment using TextBlob
-def analyze_sentiment_textblob(text):
-    blob = TextBlob(text)
-    polarity = blob.sentiment.polarity
-    if polarity > 0:
-        return "Positive"
-    elif polarity < 0:
-        return "Negative"
-    else:
-        return "Neutral"
+# Download necessary NLTK resources
+nltk.download("punkt")
+nltk.download("stopwords")
+nltk.download("wordnet")
+nltk.download("vader_lexicon")
 
-# Function to analyze sentiment using VADER
-def analyze_sentiment_vader(text):
-    analyzer = SentimentIntensityAnalyzer()
-    sentiment_scores = analyzer.polarity_scores(text)
-    if sentiment_scores['compound'] > 0.05:
-        return "Positive"
-    elif sentiment_scores['compound'] < -0.05:
-        return "Negative"
-    else:
-        return "Neutral"
+# Initialize NLP tools
+lemmatizer = WordNetLemmatizer()
+sia = SentimentIntensityAnalyzer()
+stop_words = set(stopwords.words("english"))
 
-# Streamlit app title
-st.title("Real-Time Sentiment Analysis and Social Media Data Visualization")
+# Define the text preprocessing function
+def preprocess_text(text):
+    tokens = word_tokenize(text)
+    filtered_tokens = [lemmatizer.lemmatize(word) for word in tokens if word.lower() not in stop_words]
+    return " ".join(filtered_tokens)
 
-# Step 1: Data Loading
-st.header("Uploaded Dataset Overview")
-uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+# Function to analyze sentiment
+def analyze_sentiment(text):
+    processed_text = preprocess_text(text)
+    sentiment_score = sia.polarity_scores(processed_text)["compound"]
+    sentiment_label = "Positive" if sentiment_score > 0 else "Negative" if sentiment_score < 0 else "Neutral"
+    return processed_text, sentiment_score, sentiment_label
+
+# Streamlit App Title
+st.title("📊 NLP-Based Sentiment Analysis App")
+
+# 📂 File Upload Section
+st.header("Upload a CSV or TXT file for Sentiment Analysis")
+uploaded_file = st.file_uploader("Upload a CSV or TXT file", type=["csv", "txt"])
 
 if uploaded_file is not None:
-    # Load and clean data
-    df = pd.read_csv(uploaded_file)
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
-    df.drop(columns=["Unnamed: 0.1", "Unnamed: 0"], errors="ignore", inplace=True)
-    df.fillna("", inplace=True)
-    
-    # Show dataset information
-    st.write("**Dataset Overview:**")
+    # Handling CSV Files
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:  # Handling TXT Files
+        content = uploaded_file.getvalue().decode("utf-8")
+        df = pd.DataFrame({"Text": content.splitlines()})
+
+    st.write("### Dataset Preview")
     st.dataframe(df.head())
 
-    # Display basic stats
-    st.write("**Basic Dataset Information:**")
-    st.write(df.describe(include="all"))
+    # Dynamically Detect Text Column
+    text_column = None
+    for col in df.columns:
+        if df[col].dtype == "object":
+            text_column = col
+            break
 
-    # Step 2: Text Input for Real-Time Sentiment Analysis
-    st.header("Real-Time Sentiment Analysis")
-    user_input = st.text_area("Enter text for sentiment analysis:")
-    if st.button("Analyze Sentiment"):
-        if user_input:
-            textblob_sentiment = analyze_sentiment_textblob(user_input)
-            vader_sentiment = analyze_sentiment_vader(user_input)
+    if text_column:
+        df["Processed_Text"], df["Sentiment_Score"], df["Sentiment_Label"] = zip(*df[text_column].apply(analyze_sentiment))
 
-            st.write(f"**TextBlob Sentiment:** {textblob_sentiment}")
-            st.write(f"**VADER Sentiment:** {vader_sentiment}")
-        else:
-            st.write("Please enter text for analysis.")
+        st.write("### Sentiment Analysis Results")
+        st.dataframe(df[[text_column, "Processed_Text", "Sentiment_Label"]])
 
-    # Step 3: Data Visualizations
-    st.header("Data Visualizations")
-
-    # Sentiment Distribution Pie Chart
-    st.subheader("Sentiment Distribution")
-    sentiment_counts = df['Sentiment'].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%', startangle=90)
-    ax.axis("equal")
-    st.pyplot(fig)
-
-    # Platform Distribution Pie Chart
-    st.subheader("Platform Distribution")
-    platform_counts = df['Platform'].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(platform_counts, labels=platform_counts.index, autopct='%1.1f%%', startangle=90)
-    ax.axis("equal")
-    st.pyplot(fig)
-
-    # Hashtag Count Bar Plot
-    st.subheader("Top 10 Hashtags by Count")
-    top_hashtags = df['Hashtags'].value_counts().head(10).reset_index()
-    fig, ax = plt.subplots(figsize=(10, 8))
-    sns.barplot(data=top_hashtags, x="Hashtags", y="count", palette="gist_ncar", ax=ax)
-    st.pyplot(fig)
-
-    # Likes by Year Line Plot
-    st.subheader("Total Likes by Year")
-    likes_by_year = df.groupby("Year")["Likes"].sum().reset_index()
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.lineplot(data=likes_by_year, x="Year", y="Likes", marker="o", ax=ax)
-    st.pyplot(fig)
-
-    # Scatter Plot: Likes vs Hour of Day
-    st.subheader("Likes vs Hour of Day")
-    if "Hour" in df.columns:
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(data=df, x="Hour", y="Likes", hue="Platform", ax=ax)
+        # 📊 Sentiment Distribution
+        st.write("### Sentiment Distribution")
+        fig, ax = plt.subplots()
+        df["Sentiment_Label"].value_counts().plot(kind="bar", ax=ax, color=["green", "red", "gray"])
         st.pyplot(fig)
+    else:
+        st.warning("No valid text column found in the uploaded file!")
 
-    # More Visualizations (Add as needed)
-    # You can add additional plots here following the pattern above.
+# ✍ *Real-time Text Sentiment Analysis*
+st.header("📝 Real-time Text Sentiment Analysis")
+user_text = st.text_area("Enter text for sentiment analysis:", key="text_input_area")
 
-else:
-    st.write("Please upload a CSV file to proceed.")
+if user_text:
+    processed_text, sentiment_score, sentiment_label = analyze_sentiment(user_text)
+    st.write(f"Processed Text: {processed_text}")
+    st.write(f"Sentiment Score: {sentiment_score}")
+    st.write(f"Sentiment Label: {sentiment_label}")
+
+# 🎤 *Real-time Speech Sentiment Analysis*
+st.header("🎤 Real-time Speech Sentiment Analysis")
+
+if st.button("Start Recording"):
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.write("Listening... Speak now!")
+        audio = recognizer.listen(source)
+
+        try:
+            speech_text = recognizer.recognize_google(audio)
+            st.write(f"Recognized Speech: {speech_text}")
+
+            processed_text, sentiment_score, sentiment_label = analyze_sentiment(speech_text)
+            st.write(f"Processed Text: {processed_text}")
+            st.write(f"Sentiment Score: {sentiment_score}")
+            st.write(f"Sentiment Label: {sentiment_label}")
+
+        except sr.UnknownValueError:
+            st.error("Google Speech Recognition could not understand the audio.")
+        except sr.RequestError as e:
+            st.error(f"Could not request results from Google Speech Recognition service; {e}")
