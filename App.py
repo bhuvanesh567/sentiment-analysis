@@ -18,15 +18,6 @@ nltk.download("stopwords")
 nltk.download("wordnet")
 nltk.download("vader_lexicon")
 
-
-# Add this to download Punkt tokenizer (Fix for Streamlit Cloud)
-nltk.download("averaged_perceptron_tagger")
-nltk.download("omw-1.4")
-nltk.download("maxent_ne_chunker")
-nltk.download("words")
-nltk.download("punkt")  # This is the missing resource!
-
-
 # Initialize NLP tools
 lemmatizer = WordNetLemmatizer()
 sia = SentimentIntensityAnalyzer()
