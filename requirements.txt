@@ -1,6 +1,8 @@
 streamlit
-matplotlib
 pandas
 numpy
+matplotlib
+seaborn
+nltk
 textblob
-vaderSentiment
+speechrecognition
