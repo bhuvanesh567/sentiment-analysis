@@ -4,3 +4,4 @@ nltk
 SpeechRecognition
 matplotlib
 seaborn
+TextBlob
