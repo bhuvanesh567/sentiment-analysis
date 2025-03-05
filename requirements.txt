@@ -6,3 +6,6 @@ matplotlib
 seaborn
 TextBlob
 pyaudio
+portaudio19-dev
+libportaudio2
+build-essential
