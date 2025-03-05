@@ -5,7 +5,7 @@ SpeechRecognition
 matplotlib
 seaborn
 TextBlob
-pyaudio
+speechrecognition
 portaudio19-dev
 libportaudio2
 build-essential
