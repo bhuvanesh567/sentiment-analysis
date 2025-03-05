@@ -5,3 +5,4 @@ SpeechRecognition
 matplotlib
 seaborn
 TextBlob
+pyaudio
